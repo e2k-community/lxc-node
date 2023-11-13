@@ -1,0 +1,40 @@
+---
+# Prepare node for LXC usage
+
+- name: Install lxc packages
+  ansible.builtin.package:
+    name:
+      - lxc
+      - lxcfs
+    state: "{{ lxc_version }}"
+
+- name: Configure lxc-net service
+  ansible.builtin.template:
+    src: "etc-default-lxc-net.j2"
+    dest: "/etc/default/lxc-net"
+  notify: "restart lxc-net service"
+
+- name: Create default lxc containers config
+  ansible.builtin.template:
+    src: etc-lxc-default.conf.j2
+    dest: /etc/lxc/default.conf
+
+- name: Enable and start lxc service
+  ansible.builtin.service:
+    name: lxc
+    #state: started
+    enabled: yes
+
+- name: Enable and start lxc-net services
+  ansible.builtin.service:
+    name: lxc-net
+    #state: started
+    enabled: yes
+
+- name: Copy lxc template
+  ansible.builtin.copy:
+    src: lxc-tar
+    dest: /usr/share/lxc/templates/lxc-tar
+    owner: root
+    group: root
+    mode: u=rwx,g=rx,o=rx

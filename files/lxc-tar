@@ -1,0 +1,127 @@
+#!/bin/bash
+
+#
+# LXC template based on https://raw.githubusercontent.com/saltstack/salt/develop/salt/templates/lxc/salt_tarball
+# Original file licensed under terms of Apache License 3.0
+#
+# Author: Stanislav V. Emets <stas@emets.su>
+#
+
+# Detect use under userns (unsupported)
+for arg in "$@"; do
+    [ "$arg" = "--" ] && break
+    if [ "$arg" = "--mapped-uid" -o "$arg" = "--mapped-gid" ]; then
+        echo "This template can't be used for unprivileged containers." 1>&2
+        echo "You may want to try the \"download\" template instead." 1>&2
+        exit 1
+    fi
+done
+
+# Make sure the usual locations are in PATH
+export PATH=$PATH:/usr/sbin:/usr/bin:/sbin:/bin
+
+# defaults
+default_path="/var/lib/lxc"
+
+deploy_tar() {
+    if [ -f "${path}/config" ]
+    then
+        cp "${path}/config" "${path}/_orig_config"
+    fi
+    tar xvf ${imgtar} -C "${rootfs_path}"
+
+    # Set utsname
+    sed -i '/lxc.utsname/d' "${path}/config"
+    echo "lxc.utsname = ${name}" >> "${path}/config"
+
+    # Set rootfs
+    sed -i '/lxc.rootfs/d' "${path}/config"
+    echo "lxc.rootfs = ${rootfs_path}" >> "${path}/config"
+
+    # Set proper hostname in /etc/hostname if present
+    if [ -f "${rootfs_path}/etc/hostname" ]
+    then
+        echo ${name} >"${rootfs_path}/etc/hostname"
+    fi
+    
+    if [ -f "${rootfs_path}/etc/sysconfig/network" ]; then
+        OLD_HOSTNAME=$(grep HOSTNAME ${rootfs_path}/etc/sysconfig/network)
+        sed -i "s/$OLD_HOSTNAME/HOSTNAME=$name/" ${rootfs_path}/etc/sysconfig/network
+    fi
+
+}
+
+usage() {
+    cat <<EOF
+usage:
+    ${1} -n|--name=<container_name> [-p|--path=<path>] [-h|--help]
+Mandatory args:
+  -n,--name         container name, used to as an identifier for that container from now on
+Optional args:
+  -p,--path         path to where the container rootfs will be created, defaults to ${default_path}/rootfs. The container config will go under ${default_path} in that case
+  -i,--imgtar       path to rootfs tar.gz archive
+  -h,--help         print this help
+EOF
+    return 0
+}
+
+options=$(getopt -o hp:n:l:t:r:i: -l help,rootfs:,path:,name:,network_type:,network_link:,root_passwd:,imgtar: -- "${@}")
+if [ ${?} -ne 0 ]; then
+    usage $(basename ${0})
+    exit 1
+fi
+eval set -- "${options}"
+
+while true
+do
+    case "${1}" in
+    -h|--help)          usage ${0} && exit 0;;
+    -p|--path)          path=${2}; shift 2;;
+    -n|--name)          name=${2}; shift 2;;
+    --rootfs)           rootfs_path=${2}; shift 2;;
+    -i|--imgtar)        imgtar=${2}; shift 2;;
+    --)             shift 1; break ;;
+    *)              break ;;
+    esac
+done
+
+if [ -z "${name}" ]; then
+    echo "missing required 'name' parameter"
+    exit 1
+fi
+
+if [ -z "${path}" ]; then
+    path="${default_path}/${name}"
+fi
+
+if [ $(id -u) -ne 0 ]; then
+    echo "This script should be run as 'root'"
+    exit 1
+fi
+
+if [ -z "$rootfs_path" ]; then
+    rootfs_path="${path}/rootfs"
+fi
+config_path="${default_path}/${name}"
+
+revert() {
+    echo "Interrupted, cleaning up"
+    lxc-destroy -n "${name}"
+    rm -rf "${path}/${name}"
+    rm -rf "${default_path}/${name}"
+    exit 1
+}
+
+trap revert SIGHUP SIGINT SIGTERM
+
+mkdir -p "${rootfs_path}"
+
+deploy_tar
+
+if [ ${?} -ne 0 ]; then
+    echo "failed to deploy tarball image"
+    rm -rf "${config_path}" "${path}"
+    exit 1
+fi
+
+echo "container config is ${config_path}/config"

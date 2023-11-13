@@ -1,0 +1,6 @@
+---
+- name: Restart lxc-net service
+  ansible.builtin.service:
+    name: lxc-net
+    state: restarted
+  listen: "restart lxc-net service"
