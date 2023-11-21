@@ -30,13 +30,13 @@ deploy_tar() {
     fi
     tar xvf ${imgtar} -C "${rootfs_path}"
 
-    # Set utsname
-    sed -i '/lxc.utsname/d' "${path}/config"
-    echo "lxc.utsname = ${name}" >> "${path}/config"
+    # Set lxc.uts.name
+    sed -i '/lxc.uts.name/d' "${path}/config"
+    echo "lxc.uts.name = ${name}" >> "${path}/config"
 
-    # Set rootfs
-    sed -i '/lxc.rootfs/d' "${path}/config"
-    echo "lxc.rootfs = ${rootfs_path}" >> "${path}/config"
+    # Set lxc.rootfs.path
+    sed -i '/lxc.rootfs.path/d' "${path}/config"
+    echo "lxc.rootfs.path = ${rootfs_path}" >> "${path}/config"
 
     # Set proper hostname in /etc/hostname if present
     if [ -f "${rootfs_path}/etc/hostname" ]
@@ -51,7 +51,7 @@ deploy_tar() {
 
 }
 
-usage() {
+function usage() {
     cat <<EOF
 usage:
     ${1} -n|--name=<container_name> [-p|--path=<path>] [-h|--help]
