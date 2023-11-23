@@ -30,6 +30,7 @@
     name: lxc-net
     #state: started
     enabled: yes
+  when: "{{ lxc_net.enabled }}"
 
 - name: Copy lxc template
   ansible.builtin.copy:
