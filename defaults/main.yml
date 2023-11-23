@@ -3,6 +3,7 @@ lxc_version: latest
 
 # Default values for LXC network
 lxc_net:
+  enabled: true
   USE_LXC_BRIDGE: "true" # true, false begin in lowercase
   LXC_BRIDGE: lxcbr0
   LXC_ADDR: 192.168.100.1
@@ -16,10 +17,10 @@ lxc_net:
 
 # Default values for all new LXC containers
 lxc_default:
-  lxc_network_type: veth
-  lxc_network_link: lxcbr0 
-  lxc_network_flags: up
-  lxc_network_hwaddr: 00:16:3e:xx:xx:xx
+  lxc_net_type: veth
+  lxc_net_link: lxcbr0 
+  lxc_net_flags: up
+  lxc_net_hwaddr: 00:16:3e:xx:xx:xx
 
 # If you want use macvlan instead bridge use this config
 #  lxc_network_type: macvlan
