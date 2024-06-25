@@ -28,7 +28,12 @@ deploy_tar() {
     then
         cp "${path}/config" "${path}/_orig_config"
     fi
-    tar xvf ${imgtar} -C "${rootfs_path}"
+
+    if [[ "${imgtar}" =~ ^https?://.* ]]; then
+        curl -s "${imgtar}" | tar --numeric-owner -xz -C "${rootfs_path}"
+    else
+        tar --numeric-owner -xvf ${imgtar} -C "${rootfs_path}"
+    fi
 
     # Set lxc.uts.name
     sed -i '/lxc.uts.name/d' "${path}/config"
