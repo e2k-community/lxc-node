@@ -1,6 +1,8 @@
 ---
 lxc_version: latest
 
+CONNECTION_NAME: enp1s1f0
+
 # Default values for LXC network
 lxc_net:
   enabled: true
@@ -18,7 +20,7 @@ lxc_net:
 # Default values for all new LXC containers
 lxc_default:
   lxc_net_type: veth
-  lxc_net_link: lxcbr0 
+  lxc_net_link: lxcbr0
   lxc_net_flags: up
   lxc_net_hwaddr: 00:16:3e:xx:xx:xx
 

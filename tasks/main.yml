@@ -8,12 +8,6 @@
       - lxcfs
     state: "{{ lxc_version }}"
 
-- name: Configure lxc-net service
-  ansible.builtin.template:
-    src: "etc-default-lxc-net.j2"
-    dest: "/etc/default/lxc-net"
-  notify: "restart lxc-net service"
-
 - name: Create default lxc containers config
   ansible.builtin.template:
     src: etc-lxc-default.conf.j2
@@ -22,15 +16,36 @@
 - name: Enable and start lxc service
   ansible.builtin.service:
     name: lxc
-    #state: started
     enabled: yes
 
-- name: Enable and start lxc-net services
-  ansible.builtin.service:
-    name: lxc-net
-    #state: started
-    enabled: yes
-  when: "{{ lxc_net.enabled }}"
+- name: Add lxcbr1 bridge
+  community.general.nmcli:
+    conn_name: lxcbr1
+    ifname: lxcbr1
+    type: bridge
+    state: present
+
+- name: Add bridge slave connection
+  community.general.nmcli:
+    conn_name: "{{ CONNECTION_NAME }}"
+    ifname: "{{ CONNECTION_NAME }}"
+    type: bridge-slave
+    master: lxcbr1
+    state: present
+
+- name: up lxcbr1 connection
+  community.general.nmcli:
+    conn_name: lxcbr1
+    state: present
+    
+- name: Insert/Update configuration "/etc/sysctl.conf"
+  ansible.builtin.blockinfile:
+    block: |
+      fs.inotify.max_user_instances=1024
+      vm.swappiness=10
+      vm.vfs_cache_pressure=50
+    path: /etc/sysctl.conf
+    marker: "#  {mark} sysctl ansible config  #"
 
 - name: Copy lxc template
   ansible.builtin.copy:
@@ -39,3 +54,12 @@
     owner: root
     group: root
     mode: u=rwx,g=rx,o=rx
+
+- name: Reload sysctl settings
+  ansible.builtin.command: sysctl -p
+  register: sysctl_reload
+  changed_when: sysctl_reload.stdout != ""
+  ignore_errors: yes
+
+- name: Reload all network connections
+  command: nmcli connection reload
