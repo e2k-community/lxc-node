@@ -6,6 +6,8 @@
     name:
       - lxc
       - lxcfs
+      - tar
+      - python3-lxc
     state: "{{ lxc_version }}"
 
 - name: Create default lxc containers config
