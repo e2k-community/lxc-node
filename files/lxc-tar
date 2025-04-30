@@ -29,10 +29,11 @@ deploy_tar() {
         cp "${path}/config" "${path}/_orig_config"
     fi
 
-    if [[ "${imgtar}" =~ ^https?://.* ]]; then
-        curl -s "${imgtar}" | tar --numeric-owner -xz -C "${rootfs_path}"
+    if [[ "${imgtar}" =~ ^https?://.* ]]
+    then
+        wget -qO- "${imgtar}" | tar --numeric-owner -xz -C "${rootfs_path}" || return 1
     else
-        tar --numeric-owner -xvf ${imgtar} -C "${rootfs_path}"
+        tar --numeric-owner -xvf ${imgtar} -C "${rootfs_path}" || return 1
     fi
 
     # Set lxc.uts.name
@@ -44,16 +45,32 @@ deploy_tar() {
     echo "lxc.rootfs.path = ${rootfs_path}" >> "${path}/config"
 
     # Set proper hostname in /etc/hostname if present
-    if [ -f "${rootfs_path}/etc/hostname" ]
-    then
+    if [ -f "${rootfs_path}/etc/hostname" ]; then
         echo ${name} >"${rootfs_path}/etc/hostname"
     fi
-    
+
     if [ -f "${rootfs_path}/etc/sysconfig/network" ]; then
         OLD_HOSTNAME=$(grep HOSTNAME ${rootfs_path}/etc/sysconfig/network)
         sed -i "s/$OLD_HOSTNAME/HOSTNAME=$name/" ${rootfs_path}/etc/sysconfig/network
     fi
 
+    # Change NetworkManager connection config
+    _con_dir=${rootfs_path}/etc/NetworkManager/system-connections
+    if [ -e $_con_dir ]; then
+      #lxc_net_hwaddr="$(awk -F" = " '/lxc.net.0.hwaddr/{print $2}' ${path}/config)"
+      #_lxc_eth_uuid="$(sed -n 's/^uuid=\(.*\)$/\1/p' ${_con_dir}/eth0.nmconnection)"
+      #for _eth_conn_file in $(find ${_con_dir} -name 'eth0*.nmconnection')
+      #do
+      #    grep -q 'mac-address' ${_eth_conn_file} && {
+      #      sed -i "s/^mac-address.*$/mac-address=${lxc_net_hwaddr}/" "${_eth_conn_file}"
+      #      true
+      #    } || sed -i "/\[ethernet\]/a mac-address=${lxc_net_hwaddr}" "${_eth_conn_file}"
+      #done
+      #rm -f ${rootfs_path}/lib/NetworkManager/conf.d/01-custom.conf
+      rm -f ${_con_dir}/lo*
+      rm -f ${rootfs_path}/var/lib/NetworkManager/*
+      rm -f ${rootfs_path}/var/run/NetworkManager/devices/*
+    fi
 }
 
 function usage() {
@@ -130,3 +147,4 @@ if [ ${?} -ne 0 ]; then
 fi
 
 echo "container config is ${config_path}/config"
+
