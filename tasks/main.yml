@@ -39,7 +39,7 @@
   community.general.nmcli:
     conn_name: lxcbr1
     state: present
-    
+
 - name: Insert/Update configuration "/etc/sysctl.conf"
   ansible.builtin.blockinfile:
     block: |
@@ -65,3 +65,6 @@
 
 - name: Reload all network connections
   command: nmcli connection reload
+
+- name: Reload device
+  command: nmcli device up {{ CONNECTION_NAME }}
